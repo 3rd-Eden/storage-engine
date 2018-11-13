@@ -1,10 +1,13 @@
 {
   "name": "storage-engine",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "EventEmitter abstraction on top the React-Native AsyncStorage API",
-  "main": "index.js",
+  "react-native": "index.js",
+  "main": "lib/index.js",
   "scripts": {
-    "test": "mocha --require setup-env --require test/mock.js test/*.test.js"
+    "test": "mocha --require setup-env --require test/mock.js test/*.test.js",
+    "build": "babel ./index.js -d ./lib",
+    "prepublishOnly": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -33,8 +36,10 @@
     "react-native": "*"
   },
   "devDependencies": {
-    "@babel/core": "^7.1.2",
-    "@babel/preset-env": "^7.1.0",
+    "@babel/cli": "^7.1.5",
+    "@babel/core": "^7.1.5",
+    "@babel/plugin-proposal-object-rest-spread": "^7.0.0",
+    "@babel/preset-env": "^7.1.5",
     "@babel/register": "^7.0.0",
     "assume": "^2.1.0",
     "mocha": "^5.2.0",
