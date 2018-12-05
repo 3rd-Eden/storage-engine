@@ -89,13 +89,20 @@ console.log(name); // what ever value was stored.
 Store the item from async Storage. It accepts the following arguments:
 
 - `name` (string), Name of the key that needs to be retrieved.
-- `value` (string), Value that needs to be stored.
+- `value` (Object), Value that needs to be stored.
 
 ```js
 await storage.setItem('name', 'value');
 
 const name = await storage.getItem('name');
 console.log(name); // value
+```
+
+```js
+await storage.setItem('name', { object: 'value' });
+
+const name = await storage.getItem('name');
+console.log(name); // { object: 'value' }
 ```
 
 ### removeItem

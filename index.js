@@ -23,7 +23,30 @@ class StorageEngine extends EventEmitter {
     //
     .forEach((operation) => {
       this[operation] = async function proxy(name, ...args) {
-        const result = await AsyncStorage[operation](name, ...args);
+
+        var result;
+        switch (operation) {
+          case 'getItem':
+            result = await AsyncStorage[operation](name, ...args);
+            if (result) {
+              result = JSON.parse(result);
+            }
+          break;
+
+          case 'setItem':
+            if (args.length > 0) {
+              const newValue = JSON.stringify(args[0]);
+              const remainingArgs = args.slice(1);
+              result = await AsyncStorage[operation](name, newValue, ...remainingArgs);
+            } else {
+              result = await AsyncStorage[operation](name, ...args);
+            }
+          break;
+
+          default:
+            result = await AsyncStorage[operation](name, ...args);
+          break;
+        }
 
         //
         // multi{Get|Set|Remove} based commands require additional processing
