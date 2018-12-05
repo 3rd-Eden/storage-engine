@@ -43,6 +43,32 @@ class StorageEngine extends EventEmitter {
             }
           break;
 
+          case 'multiGet':
+            result = await AsyncStorage[operation](name, ...args);
+            result = result.map(function(item) {
+              const value = item[1];
+              return [item[0], value ? JSON.parse(value) : value];
+            });
+          break;
+
+          case 'multiSet':
+            if (name && name.length > 0) {
+              const arrayOfKeysAndJSONValues = name.map(function(keyValue) {
+                if (keyValue.length > 1) {
+                  const key = keyValue[0];
+                  const value = keyValue[1];
+                  const JSONValue = value ? JSON.stringify(value) : value;
+                  return [key, JSONValue];
+                } else {
+                  return keyValue;
+                }
+              });
+              result = await AsyncStorage[operation](arrayOfKeysAndJSONValues, ...args);
+            } else {
+              result = await AsyncStorage[operation](name, ...args);
+            }
+          break;
+
           default:
             result = await AsyncStorage[operation](name, ...args);
           break;

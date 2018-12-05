@@ -98,6 +98,20 @@ describe('storage-engine', function () {
     });
   });
 
+  describe('#{multiGet|multiSet}Item', function () {
+    it('stores and fetches multiple values', async function () {
+      await storage.multiSet([['key1', 'value1'], ['key2', 'value2']]);
+
+      assume(await storage.multiGet(['key1', 'key2'])).deep.equals([['key1', 'value1'], ['key2', 'value2']]);
+    })
+
+    it('stores and fetches multiple objects', async function () {
+      await storage.multiSet([['key1', { object1: 'object1' }], ['key2', { object2: 'object2' }]]);
+
+      assume(await storage.multiGet(['key1', 'key2'])).deep.equals([['key1', { object1: 'object1' }], ['key2', { object2: 'object2' }]]);
+    })
+  });
+
   describe('#clear', function () {
     it('removes all keys', async function () {
       assume(await storage.getItem('foo')).equals('bar');
