@@ -1,6 +1,6 @@
 {
   "name": "storage-engine",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "EventEmitter abstraction on top the React-Native AsyncStorage API",
   "react-native": "index.js",
   "main": "lib/index.js",

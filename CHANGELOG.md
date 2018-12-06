@@ -1,5 +1,9 @@
 # CHANGELOG
 
+### 2.0.0
+
+- Now encodes and decodes data automatically as JSON values.
+
 ### 1.0.1
 
 - Added a pre-build, non es6 version so it can more easily be imported for
