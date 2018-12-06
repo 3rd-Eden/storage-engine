@@ -17,6 +17,22 @@ AsyncStorage.setItem = async (name, value) => {
   return AsyncStorage.map.set(name, value);
 };
 
+AsyncStorage.multiSet = async (nameValues) => {
+  nameValues.forEach(element => {
+    AsyncStorage.map.set(element[0], element[1]);
+  });
+  return nameValues;
+};
+
+AsyncStorage.multiGet = async (names) => {
+  var result = [];
+  names.forEach(name => {
+    const value = AsyncStorage.map.get(name);
+    result.push([name, value]);
+  });
+  return result;
+};
+
 AsyncStorage.removeItem = async (name) => {
   return AsyncStorage.map.delete(name);
 };

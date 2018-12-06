@@ -23,7 +23,56 @@ class StorageEngine extends EventEmitter {
     //
     .forEach((operation) => {
       this[operation] = async function proxy(name, ...args) {
-        const result = await AsyncStorage[operation](name, ...args);
+
+        var result;
+        switch (operation) {
+          case 'getItem':
+            result = await AsyncStorage[operation](name, ...args);
+            if (result) {
+              result = JSON.parse(result);
+            }
+          break;
+
+          case 'setItem':
+            if (args.length > 0) {
+              const newValue = JSON.stringify(args[0]);
+              const remainingArgs = args.slice(1);
+              result = await AsyncStorage[operation](name, newValue, ...remainingArgs);
+            } else {
+              result = await AsyncStorage[operation](name, ...args);
+            }
+          break;
+
+          case 'multiGet':
+            result = await AsyncStorage[operation](name, ...args);
+            result = result.map(function(item) {
+              const value = item[1];
+              return [item[0], value ? JSON.parse(value) : value];
+            });
+          break;
+
+          case 'multiSet':
+            if (name && name.length > 0) {
+              const arrayOfKeysAndJSONValues = name.map(function(keyValue) {
+                if (keyValue.length > 1) {
+                  const key = keyValue[0];
+                  const value = keyValue[1];
+                  const JSONValue = value ? JSON.stringify(value) : value;
+                  return [key, JSONValue];
+                } else {
+                  return keyValue;
+                }
+              });
+              result = await AsyncStorage[operation](arrayOfKeysAndJSONValues, ...args);
+            } else {
+              result = await AsyncStorage[operation](name, ...args);
+            }
+          break;
+
+          default:
+            result = await AsyncStorage[operation](name, ...args);
+          break;
+        }
 
         //
         // multi{Get|Set|Remove} based commands require additional processing
