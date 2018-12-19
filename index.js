@@ -57,7 +57,7 @@ class StorageEngine extends EventEmitter {
                 if (keyValue.length > 1) {
                   const key = keyValue[0];
                   const value = keyValue[1];
-                  const JSONValue = value ? JSON.stringify(value) : value;
+                  const JSONValue = JSON.stringify(value);
                   return [key, JSONValue];
                 } else {
                   return keyValue;

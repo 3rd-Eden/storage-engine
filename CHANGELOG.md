@@ -1,5 +1,7 @@
 # CHANGELOG
 
+- Encode falsy values, update tests/mocks to reflect string requirement from AsyncStorage
+
 ### 2.0.0
 
 - Now encodes and decodes data automatically as JSON values.
