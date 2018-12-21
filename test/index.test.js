@@ -25,8 +25,10 @@ describe('storage-engine', function () {
       const key = 'falseyValue';
       await storage.setItem(key, false);
       assume(await storage.getItem(key)).equals(false);
+      
       await storage.setItem(key, '');
       assume(await storage.getItem(key)).equals('');
+
       await storage.setItem(key, null);
       assume(await storage.getItem(key)).equals(null);
     });
@@ -61,6 +63,17 @@ describe('storage-engine', function () {
       });
 
       storage.setItem('pew', 'waddup');
+    });
+
+    it('emits <key> when a no value is get', function (next) {
+      storage.once('noValue', function (method, value) {
+        assume(method).equals('getItem');
+        assume(value).equals(null);
+
+        next();
+      });
+
+      storage.getItem('noValue');
     });
 
     it('stores and fetches objects', async function () {
