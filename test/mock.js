@@ -14,11 +14,13 @@ AsyncStorage.getItem = async (name) => {
 };
 
 AsyncStorage.setItem = async (name, value) => {
+  if (typeof value !== 'string') throw new Error('AsyncStorage requires strings to be stored');
   return AsyncStorage.map.set(name, value);
 };
 
 AsyncStorage.multiSet = async (nameValues) => {
   nameValues.forEach(element => {
+    if (typeof element[1] !== 'string') throw new Error('AsyncStorage requires strings to be stored');
     AsyncStorage.map.set(element[0], element[1]);
   });
   return nameValues;
