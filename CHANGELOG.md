@@ -1,6 +1,9 @@
 # CHANGELOG
 
-- Encode falsy values, update tests/mocks to reflect string requirement from AsyncStorage
+### 2.0.1
+
+- Encode falsy values, update tests/mocks to reflect string requirement from
+  AsyncStorage.
 
 ### 2.0.0
 
