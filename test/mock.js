@@ -1,12 +1,9 @@
-const key = require.resolve('react-native');
 const AsyncStorage = require('asyncstorageapi');
+const poison = require('require-poisoning');
 
 //
 // Poison the require cache to inject a mocked version of this dependency.
 //
-require.cache[key] = {
-  id: key,
-  filename: key,
-  loaded: true,
+poison('react-native', {
   exports: { AsyncStorage }
-};
+});

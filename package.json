@@ -45,6 +45,7 @@
     "asyncstorageapi": "^1.0.0",
     "mocha": "^5.2.0",
     "react-native": "^0.57.4",
+    "require-poisoning": "^1.0.0",
     "setup-env": "^1.2.1"
   }
 }
