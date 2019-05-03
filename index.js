@@ -1,137 +1,458 @@
-import { AsyncStorage } from 'react-native';
+import AsyncStorage from './compatibility';
 import EventEmitter from 'eventemitter3';
+import diagnostics from 'diagnostics';
+import enabled from 'enabled';
+
+//
+// Create a diagnostics instance so we can add some logging.
+//
+const debug = diagnostics('storage-engine');
+const debugStorage = diagnostics('storage-engine:storage');
 
 /**
- * Wrap the AsyncStorage API in an EventEmitter so all methods and API's can
- * get called.
+ * All available API methods on which our modifier could be called.
  *
- * @class
+ * @type {Array}
  * @public
+ */
+const APIMethods = Object.keys(AsyncStorage).filter((key) => {
+  return typeof AsyncStorage[key] === 'function';
+});
+
+/**
+ * Registers a new key modifier for a given Map().
+ *
+ * @param {Map} map The map in which the modifier needs to be stored.
+ * @param {String} pattern Pattern that matches the keys where the modifier should trigger.
+ * @param {Function|Object} modifiers Object with callbacks or all single callback.
+ * @param {StorageEngine} self Context to bind the modifiers on.
+ * @private
+ */
+function register(map, { pattern, modifiers, context, options }) {
+  if (typeof modifiers === 'function') {
+    modifiers = APIMethods.reduce((memo, key) => {
+      memo[key] = modifiers;
+      return memo;
+    }, {});
+  }
+
+  Object.keys(modifiers).forEach((method) => {
+    const previous = map.get(method) || [];
+    const modifier = modifiers[method];
+
+    map.set(method, previous.concat({
+      pattern: pattern,
+
+      /**
+       * Wrap our given modifier function so we can transform it in our
+       * desired function signature where the modifiers receive the data
+       * as first argument, and optional options as second argument.
+       *
+       * @param {Object} args The data for the modifier.
+       * @returns {Mixed} Result.
+       * @private
+       */
+      modifier: async function wrapper(args) {
+        return await modifier.call(context, args, options);
+      }
+    }));
+  });
+
+  return context;
+}
+
+/**
+ * Run the modifiers over the given dataset.
+ *
+ * @param {Map} map Dataset that contains the modifiers.
+ * @param {Object} data The data that is passed around between modifers.
+ * @returns {Object} Data.
+ */
+async function run(map, data) {
+  const modifiers = map.get(data.method) || [];
+
+  let result = data;
+
+  for (let i = 0; i < modifiers.length; i++) {
+    const { pattern, modifier } = modifiers[i];
+    if (!enabled(result.key, pattern)) continue;
+
+    const changed = await modifier(result);
+
+    if (changed) result = {
+      ...result,
+      ...changed
+    };
+  }
+
+  return result;
+}
+
+/**
+ * AsyncStorage has their weird concept of multi(x) methods which follow
+ * really weird API, so we need to attempt to normalize them so it fits
+ * the more natural plugin API that we've created. It will add a bit more
+ * overhead, but at least you won't lose your sanity.
+ *
+ * @param {Map} map Dataset that contains the modifiers.
+ * @param {Object} data The data that is passed around between modifers.
+ * @public
+ */
+async function multi(map, data) {
+  const value = [];
+  const { method, key } = data;
+
+  for (let i = 0; i < key.length; i++) {
+    const data = key[i];
+    const pair = typeof data === 'object';
+
+    if (!pair) {
+      value.push(await run(map, { method, key: data, value: undefined }));
+      continue;
+    }
+
+    value.push(
+      await run(map, { method, key: data.key || data[0], value: data.value || data[1] })
+    );
+  }
+
+  return {
+    method,
+    value
+  };
+}
+
+/**
+ * Our enhanced StorageEngine.
+ *
+ * @param {Map} map Dataset that contains the modifiers.
+ * @param {Object} data The data that is passed around between modifers.
+ * @returns {Object} Data.
  */
 class StorageEngine extends EventEmitter {
   constructor() {
     super();
 
-    Object.keys(AsyncStorage)
-    //
-    // Ignore everything that is not a function.
-    //
-    .filter((key) => typeof AsyncStorage[key] === 'function')
+    this.plugins = new Map(); // Storage for plugins.
+    this.post = new Map();    // Storage for before hooks.
+    this.pre = new Map();     // Storage for after hooks.
+    this.kill = [];           // Methods that need to be called upon destroy.
 
     //
-    // Re-Introduce each method as a proxy method that will call an event.
+    // We want to re-define our public API methods so we can automate
+    // some of the pre/post processing to reduce duplicate code.
     //
-    .forEach((operation) => {
-      this[operation] = async function proxy(name, ...args) {
+    APIMethods.forEach((method) => {
+      if (typeof this[method] !== 'function') {
+        return debug(`StorageEngine is missing an API method for ${method}`);
+      }
 
-        var result;
-        switch (operation) {
-          case 'getItem':
-            result = await AsyncStorage[operation](name, ...args);
-            if (result) {
-              result = JSON.parse(result);
-            }
-          break;
-
-          case 'setItem':
-            if (args.length > 0) {
-              const newValue = JSON.stringify(args[0]);
-              const remainingArgs = args.slice(1);
-              result = await AsyncStorage[operation](name, newValue, ...remainingArgs);
-            } else {
-              result = await AsyncStorage[operation](name, ...args);
-            }
-          break;
-
-          case 'multiGet':
-            result = await AsyncStorage[operation](name, ...args);
-            result = result.map(function(item) {
-              const value = item[1];
-              return [item[0], value ? JSON.parse(value) : value];
-            });
-          break;
-
-          case 'multiSet':
-            if (name && name.length > 0) {
-              const arrayOfKeysAndJSONValues = name.map(function(keyValue) {
-                if (keyValue.length > 1) {
-                  const key = keyValue[0];
-                  const value = keyValue[1];
-                  const JSONValue = JSON.stringify(value);
-                  return [key, JSONValue];
-                } else {
-                  return keyValue;
-                }
-              });
-              result = await AsyncStorage[operation](arrayOfKeysAndJSONValues, ...args);
-            } else {
-              result = await AsyncStorage[operation](name, ...args);
-            }
-          break;
-
-          default:
-            result = await AsyncStorage[operation](name, ...args);
-          break;
-        }
-
-        //
-        // multi{Get|Set|Remove} based commands require additional processing
-        // as they follow a really weird array based pattern.
-        //
-        switch (operation) {
-          case 'clear':
-          case 'getAllKeys':
-          case 'flushGetRequests':
-            this.emit(operation, ...args, result);
-          break;
-
-          case 'multiGet':
-            name.forEach((key, index) => {
-              this.emit(key, 'getItem', ((result || [])[index] || [])[1]);
-            });
-          break;
-
-          case 'multiSet':
-            name.forEach((key, index) => {
-              this.emit(key[0], 'setItem', key[1], (result || [])[index]);
-            });
-          break;
-
-          case 'multiRemove':
-            name.forEach((key, index) => {
-              this.emit(key, 'removeItem', (result || [])[index]);
-            });
-          break;
-
-          case 'multiMerge':
-            name.forEach((key, index) => {
-              this.emit(key[0], 'mergeItem', key[1], (result || [])[index]);
-            });
-          break;
-
-          //
-          // Catch all for "normal" operations such as `getItem`, `setItem`.
-          //
-          default:
-            this.emit(name, operation, ...args, result);
-          break;
-        }
-
-        return result;
-      };
-
-      //
-      // Ensure that we get meaningful names in our stack trace by setting it
-      // to the correct name instead of `wrapper`.
-      //
-      this[operation].displayName = operation;
+      this.redefine(method);
     });
+  }
+
+  /**
+   * Gives access to the AsyncStorage API method without them being affected
+   * by any modification that this library, or plugin does.
+   *
+   * @param {String} method AsyncStorage method to call.
+   * @param {...args} args Rest arguments that are supplied to the engine.
+   * @returns {Mixed} Everything.
+   * @public
+   */
+  async api(method, ...args) {
+    debugStorage(`${method}:`, args);
+    return await AsyncStorage[method](...args);
+  }
+
+  /**
+   * Redefine the API methods so we can enhance them with our pre and post
+   * processing.
+   *
+   * @param {String} method The method that needs to be redefined.
+   * @public
+   */
+  redefine(method) {
+    const fn = this[method];
+    debug(`redefining ${method} with our plugin processing`);
+
+    this[method] = async function proxy(key, value) {
+      const multiple = Array.isArray(value);
+
+      const data = { key, value, method };
+      const pre = await (multiple ? multi : run)(this.pre, data) || {};
+      const api = { ...pre, ...(await fn.call(this, pre) || {}) };
+      const post = await (multiple ? multi : run)(this.post, api) || {};
+
+      return post.value;
+    }.bind(this);
+
+    //
+    // Reset the displayName so we have the correct function name show up
+    // in stacktraces instead of `proxy`.
+    //
+    this[method].displayName = method;
+  }
+
+  /**
+   * Registers a modifier for a given pattern before the API method is
+   * called. This allows you to modify the key, or even intercept the
+   * request completely and hand it off to something else.
+   *
+   * @param {String} pattern Pattern that they key should match.
+   * @param {Object|Function} modifiers methodname->fn map, or one function for all.
+   * @returns {StorageEngine} Self, for chaining purposes.
+   * @public
+   */
+  before(pattern, modifiers, options = {}) {
+    return register(this.pre, {
+      context: this,
+      modifiers,
+      options,
+      pattern
+    });
+  }
+
+  /**
+   * Registers a modifier for a given pattern after the API method is
+   * called. This allows you to modify the value, or even intercept the
+   * request completely and hand it off to something else.
+   *
+   * @param {String} pattern Pattern that they key should match.
+   * @param {Object|Function} modifiers methodname->fn map, or one function for all.
+   * @returns {StorageEngine} Self, for chaining purposes.
+   * @public
+   */
+  after(pattern, modifiers, options = {}) {
+    return register(this.post, {
+      context: this,
+      modifiers,
+      options,
+      pattern
+    });
+  }
+
+  /**
+   * Register a new plugin.
+   *
+   * @param {String} pattern The key pattern the plugin should trigger on.
+   * @param {Function} plugin The plugin function.
+   * @param {Object} options Plugin options.
+   * @public
+   */
+  use(pattern, plugin, options = {}) {
+    const before = this.before.bind(this, pattern);
+    const after = this.after.bind(this, pattern);
+    const engine = this;
+
+    plugin({
+      /**
+       * Registers a clean up function from the plugin that needs to be
+       * called when the storage engine is destroyed.
+       *
+       * @param {Function} fn Function to execute upon clean-up.
+       * @public
+       */
+      destroy: function destroy(fn) {
+        engine.kill.push(fn);
+      },
+
+      /**
+       * Check if a given key is enabled by the pattern.
+       *
+       * @param {String} key Key to check if enabled.
+       * @returns {Boolean} Indication of the key is enabled.
+       * @public
+       */
+      enabled: function isEnabled(key) {
+        return enabled(key, pattern);
+      },
+
+      before,       // Pre-bound before hook.
+      after,        // Pre-bound after hook.
+      pattern,      // The pattern/keys to trigger on.
+      options,      // Options for the plugin.
+      engine        // Reference to our storage instance.
+    });
+
+    return this;
+  }
+
+  /**
+   * Destroy the created storage instance.
+   *
+   * @returns {Mixed} What ever the kill() functions return.
+   * @public
+   */
+  async destroy() {
+    const kill = this.kill.slice(0);
+
+    this.kill.lenght = 0;
+    this.plugins.clear();
+    this.post.clear();
+    this.pre.clear();
+
+    return await Promise.all(
+      kill.map(fn => fn())
+    );
+  }
+
+  /**
+   * Get an item from AsyncStorage.
+   *
+   * @note This is enhanced using the redefine method.
+   * @param {String} key The key of the item we want to retrieve.
+   * @returns {Mixed} Data or no data, that's the question.
+   * @public
+   */
+  async getItem({ key, value, method }) {
+    if (typeof value === 'undefined') {
+      value = await this.api(method, key);
+    }
+
+    return { key, value };
+  }
+
+  /**
+   * Store data for a given key in AsyncStorage.
+   *
+   * @note This is enhanced using the redefine method.
+   * @param {String} key The key of the item we want to store.
+   * @param {Mixed} value The value that needs to be assigned to the key.
+   * @returns {Mixed} Data or no data, that's the question.
+   * @public
+   */
+  async setItem({ key, value, method }) {
+    if (typeof value !== 'undefined') {
+      await this.api(method, key, value.toString());
+    } else {
+      throw new Error(`Unable to store undefined value for key(${key})`);
+    }
+
+    return { key, value };
+  }
+
+  /**
+   * Removes the key from the AsyncStorage.
+   *
+   * @note This is enhanced using the redefine method.
+   * @param {String} key The key of the item we want to remove.
+   * @returns {Mixed} Data or no data, that's the question.
+   * @public
+   */
+  async removeItem({ key, value, method }) {
+    await this.api(method, key);
+    return { key, value };
+  }
+
+  /**
+   * Merge a given item.
+   *
+   * @note This is enhanced using the redefine method.
+   * @param {String} key The key of the item we want to store.
+   * @param {Mixed} value The value that needs to be assigned to the key.
+   * @public
+   */
+  async mergeItem({ key, value, method }) {
+    if (typeof value !== 'undefined') {
+      await this.api(method, key, value);
+    }
+
+    return { key, value };
+  }
+
+  /**
+   * Clear, all the things.
+   *
+   * @note This is enhanced using the redefine method.
+   * @public
+   */
+  async clear({ method }) {
+    await this.api(method);
+  }
+
+  /**
+   * Merge a given item.
+   *
+   * @note This is enhanced using the redefine method.
+   * @param {String} key The key of the item we want to store.
+   * @param {Mixed} value The value that needs to be assigned to the key.
+   * @public
+   */
+  async multiGet({ value, method }) {
+    if (!value !== 'undefined') {
+      value = await this.api(method, value.map(pair => pair.key));
+    }
+
+    return { value };
+  }
+
+  /**
+   * Set multiple items at once.
+   *
+   * @note This is enhanced using the redefine method.
+   * @param {Array} key/value Array of key/value pairs that need to be stored.
+   * @public
+   */
+  async multiSet({ value, method }) {
+    await this.api(method, value.map(pair => [ pair.key, pair.value ]));
+  }
+
+  /**
+   * Merge multiple items at once.
+   *
+   * @note This is enhanced using the redefine method.
+   * @param {Array} key/value The key of the item we want to store.
+   * @public
+   */
+  async multiMerge({ value, method }) {
+    await this.api(method, value.map(pair => [ pair.key, pair.value ]));
+  }
+
+  /**
+   * Remove multiple items.
+   *
+   * @note This is enhanced using the redefine method.
+   * @param {Array} key The key of the item we want to remove.
+   * @public
+   */
+  async multiRemove({ value, method }) {
+    await this.api(method, value.map(pair => pair.key));
+  }
+
+  /**
+   * Merge a given item.
+   *
+   * @note This is enhanced using the redefine method.
+   * @param {String} key The key of the item we want to store.
+   * @param {Mixed} value The value that needs to be assigned to the key.
+   * @public
+   */
+  async getAllKeys({ method }) {
+    const keys = await this.api(method);
+
+    return { value: keys };
+  }
+
+  /**
+   * Flush the batche requests API method.
+   *
+   * @public
+   */
+  async flushGetRequests({ method }) {
+    await this.api(method);
   }
 }
 
+//
+// We want to expose pre-initialized storage instance as default so our
+// main API functions exactly as the AsyncStorage API, ready to go.
+//
 const storage = new StorageEngine();
-
 export {
   storage as default,
-  StorageEngine
+  StorageEngine,
+  register,
+  multi,
+  run
 }
