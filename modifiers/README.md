@@ -24,11 +24,25 @@ The following modifiers are available in this package:
 
 ### json
 
+Adds automatic JSON encoding and decoding. The `mergeItem` and `multiMerge` API's
+of the AsyncStorage API already promote the usage of JSON for your values. This
+plugin does it automatically for you.
+
 ```js
 import { json } from 'storage-modifiers';
 import storage from 'storage-engine';
 
 storage.use('*', json);
+
+await storage.setItem('this', {
+  would: 'not',
+  work: {
+    without: 'the'
+  },
+  plugin: true
+});
+
+const value = await storage.getItem('this') // { would: "not", ...}
 ```
 
 ### emit

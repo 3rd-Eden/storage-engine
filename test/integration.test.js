@@ -1,7 +1,15 @@
-import storage, { StorageEngine } from '../index.js';
+import { StorageEngine } from '../index.js';
+import { json } from '../modifiers';
 import assume from 'assume';
 
 describe('storage-engine', function () {
+  let storage;
+
+  beforeEach(function () {
+    storage = new StorageEngine();
+    storage.use('*', json);
+  });
+
   describe('#{get|set}Item', function () {
     it('stores and fetches values', async function () {
       await storage.setItem('foo', 'bar');

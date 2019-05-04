@@ -98,27 +98,27 @@ async function run(map, data) {
  * @param {Object} data The data that is passed around between modifers.
  * @public
  */
-async function multi(map, data) {
-  const value = [];
-  const { method, key } = data;
+async function multi(map, { method, key, value}) {
+  const dataset = Array.isArray(value) ? value : key;
+  const result = [];
 
-  for (let i = 0; i < key.length; i++) {
-    const data = key[i];
+  for (let i = 0; i < dataset.length; i++) {
+    const data = dataset[i];
     const pair = typeof data === 'object';
 
     if (!pair) {
-      value.push(await run(map, { method, key: data, value: undefined }));
+      result.push(await run(map, { method, key: data, value: undefined }));
       continue;
     }
 
-    value.push(
+    result.push(
       await run(map, { method, key: data.key || data[0], value: data.value || data[1] })
     );
   }
 
   return {
     method,
-    value
+    value: result
   };
 }
 
@@ -177,11 +177,14 @@ class StorageEngine extends EventEmitter {
     debug(`redefining ${method} with our plugin processing`);
 
     this[method] = async function proxy(key, value) {
-      const multiple = Array.isArray(value);
+      const multiple = Array.isArray(key);
 
       const data = { key, value, method };
+
       const pre = await (multiple ? multi : run)(this.pre, data) || {};
+
       const api = { ...pre, ...(await fn.call(this, pre) || {}) };
+
       const post = await (multiple ? multi : run)(this.post, api) || {};
 
       return post.value;

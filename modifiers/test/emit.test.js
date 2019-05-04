@@ -34,6 +34,7 @@ describe('(emit)', function () {
 
   afterEach(function () {
     storage.destroy();
+    storage.clear();
   });
 
   it('is a function', function () {
@@ -97,7 +98,8 @@ describe('(emit)', function () {
       });
 
       assume(key).is.a('undefined');
-      assume(value).is.a('undefined');
+      assume(value).is.a('array');
+      assume(value).is.length(0);
       assume(method).equals('getAllKeys');
     });
   })

@@ -2,12 +2,13 @@
   "name": "storage-modifiers",
   "version": "1.0.0",
   "description": "Curated set of modifiers for storage-engine",
-  "main": "index.js",
+  "main": "./lib",
+  "react-native": "index.js",
   "scripts": {
     "test:runner": "mocha --require setup-env --require test/mock.js test/*.test.js",
     "test:watch": "npm run test:runner -- --watch",
     "test": "npm run test:runner",
-    "build": "babel ./index.js -d ./lib",
+    "build": "babel ./*.js -d ./lib",
     "prepublishOnly": "npm run build"
   },
   "repository": {

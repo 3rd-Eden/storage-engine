@@ -27,42 +27,50 @@ async function expire({ before, after, options, engine, enabled, destroy }) {
     }, time);
   }
 
-  before({
-    /**
-     * When a new item is stored, we want to store additional data like the
-     * the TTL of the data. This allows us intercept the value later and
-     * assert if the value is expired or not.
-     *
-     * @param {Object} data Key, Value, Method used.
-     * @returns {Object} pre-processed value.
-     * @public
-     */
-    setItem: ({ key, value }) => {
-      schedule(key, duration);
+  /**
+   * When a new item is stored, we want to store additional data like the
+   * the TTL of the data. This allows us intercept the value later and
+   * assert if the value is expired or not.
+   *
+   * @param {Object} data Key, Value, Method used.
+   * @returns {Object} pre-processed value.
+   * @public
+   */
+  function set({ key, value }) {
+    schedule(key, duration);
 
-      return {
-        ttl: Date.now() + duration,
-        value
-      };
-    }
+    return {
+      ttl: Date.now() + duration,
+      value
+    };
+  }
+
+  /**
+   * Assert that the fetched key is not yet expired. If it's expired we
+   * need to transform the value to `null` as indication of expiree.
+   *
+   * If the value is not expired we need to clean up the datastructure so
+   * it no longer includes our additional data.
+   *
+   * @param {Object} data Key, Value, Method used.
+   * @returns {Object} post processed value.
+   * @public
+   */
+  function get({ value }) {
+    if (value.ttl >= Date.now()) return { value: null };
+    return { value: value.value };
+  }
+
+  before({
+    setItem: set,
+    mergeItem: set,
+    multiSet: set,
+    multiMerge: set
   });
 
   after({
-    /**
-     * Assert that the fetched key is not yet expired. If it's expired we
-     * need to transform the value to `null` as indication of expiree.
-     *
-     * If the value is not expired we need to clean up the datastructure so
-     * it no longer includes our additional data.
-     *
-     * @param {Object} data Key, Value, Method used.
-     * @returns {Object} post processed value.
-     * @public
-     */
-    getItem: ({ value }) => {
-      if (value.ttl >= Date.now()) return { value: null };
-      return { value: value.value };
-    }
+    getItem: get,
+    multiGet: get
   });
 
   //

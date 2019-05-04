@@ -2,7 +2,7 @@ import engine, { StorageEngine } from '../index.js';
 import { describe, it } from 'mocha';
 import assume from 'assume';
 
-describe.only('StorageEngine', function () {
+describe('StorageEngine', function () {
   let storage;
 
   beforeEach(function () {
@@ -224,6 +224,66 @@ describe.only('StorageEngine', function () {
         const nonexisting = await storage.getItem('i');
 
         assume(nonexisting).is.a('null');
+      });
+    });
+
+    describe('#multiGet', function () {
+      it('retrieves multiple values', async function () {
+        await storage.setItem('foo', 'this is a value');
+        await storage.setItem('bar', 'another value');
+
+        const values = await storage.multiGet(['foo', 'bar']);
+
+        assume(values).is.a('array');
+        assume(values).is.length(2);
+
+        assume(values[0].key).equals('foo');
+        assume(values[0].value).equals('this is a value');
+
+        assume(values[1].key).equals('bar');
+        assume(values[1].value).equals('another value');
+      });
+
+      it('can pre-process using `before`', async function () {
+        await storage.setItem('foo', 'this is a value');
+        await storage.setItem('bar', 'another value');
+
+        storage.before('*', {
+          multiGet: function ({ key }) {
+            return { key: 'bar' }
+          }
+        });
+
+        const result = await storage.multiGet(['foo']);
+
+        assume(result).is.a('array');
+        assume(result).is.length(1);
+
+        //
+        // It's expected to fetch a different value, as we've transformed the
+        // key to `bar` in our `before` hook.
+        //
+        assume(result[0].key).equals('bar');
+        assume(result[0].value).equals('another value');
+      });
+
+      it('can post-process using `after`', async function () {
+        await storage.setItem('foo', 'this is a value');
+
+        storage.after('*', {
+          multiGet: function ({ key, value }) {
+            assume(key).equals('foo');
+            assume(value).equals('this is a value');
+
+            return { value: 'lulz' }
+          }
+        });
+
+        const values = await storage.multiGet(['foo']);
+
+        assume(values).is.a('array');
+        assume(values[0].key).equals('foo');
+        assume(values[0].value).equals('lulz');
       });
     });
   });

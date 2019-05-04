@@ -38,11 +38,15 @@ function encode(args) {
  */
 function json({ before, after }) {
   before({
-    setItem: encode
+    setItem: encode,
+    mergeItem: encode,
+    multiSet: encode,
+    multiMerge: encode
   });
 
   after({
-    getItem: decode
+    getItem: decode,
+    multiGet: decode
   });
 }
 

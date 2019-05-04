@@ -17,6 +17,7 @@ describe('(encrypt)', function () {
 
   afterEach(function () {
     storage.destroy();
+    storage.clear();
   });
 
   it('encrypts the content when a value is stored', async function () {
