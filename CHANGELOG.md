@@ -1,5 +1,9 @@
 # CHANGELOG
 
+### 3.0.0
+
+- Complete rewrite of internals.
+
 ### 2.0.1
 
 - Encode falsy values, update tests/mocks to reflect string requirement from
