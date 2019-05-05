@@ -2,5 +2,6 @@ node_modules
 package-lock.json
 .*
 test
+modifiers
 *.tgz
 !lib

@@ -1,5 +1,10 @@
 # CHANGELOG
 
+### 3.0.1
+
+- Ensure that our compatibility check is also ran against the `lib` folder
+  so the correct library is also loaded for our ES5 build.
+
 ### 3.0.0
 
 - Complete rewrite of internals.

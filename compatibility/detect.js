@@ -18,6 +18,13 @@ const fs = require('fs');
 // instead and use that as entry file.
 //
 (function () {
+  //
+  // We're also bundling compiled code, so we want to make sure that our `lib`
+  // folder also updates it's detection script when we run
+  //
+  const lib = path.join(__dirname, '..', 'lib', 'compatibility', 'detect.js');
+  if (fs.existsSync(lib)) require(lib);
+
   try { require.resolve('@react-native-community/async-storage'); }
   catch (e) {
     const rnative = fs.readFileSync(path.join(__dirname, 'react-native.js'));
