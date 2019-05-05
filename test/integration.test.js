@@ -1,17 +1,13 @@
-import storage, { StorageEngine } from '../';
+import { StorageEngine } from '../index.js';
+import { json } from '../modifiers';
 import assume from 'assume';
 
 describe('storage-engine', function () {
-  it('exposes the StorageEngine class', function () {
-    assume(StorageEngine).is.a('function');
-  });
+  let storage;
 
-  it('exposes a `storage` instance', function () {
-    assume(storage).is.instanceOf(StorageEngine);
-  });
-
-  it('has a correct displayName', function () {
-    assume(storage.getItem.displayName).equals('getItem');
+  beforeEach(function () {
+    storage = new StorageEngine();
+    storage.use('*', json);
   });
 
   describe('#{get|set}Item', function () {
@@ -25,7 +21,7 @@ describe('storage-engine', function () {
       const key = 'falseyValue';
       await storage.setItem(key, false);
       assume(await storage.getItem(key)).equals(false);
-      
+
       await storage.setItem(key, '');
       assume(await storage.getItem(key)).equals('');
 
@@ -43,64 +39,10 @@ describe('storage-engine', function () {
       throw new Error('It should have thrown');
     });
 
-    it('emits <key> when a new value is get', function (next) {
-      storage.once('foo', function (method, value) {
-        assume(method).equals('getItem');
-        assume(value).equals('bar');
-
-        next();
-      });
-
-      storage.getItem('foo');
-    });
-
-    it('emits <key> when a new value is set', function (next) {
-      storage.once('pew', function (method, value) {
-        assume(method).equals('setItem');
-        assume(value).equals('waddup');
-
-        next();
-      });
-
-      storage.setItem('pew', 'waddup');
-    });
-
-    it('emits <key> when a no value is get', function (next) {
-      storage.once('noValue', function (method, value) {
-        assume(method).equals('getItem');
-        assume(value).equals(null);
-
-        next();
-      });
-
-      storage.getItem('noValue');
-    });
 
     it('stores and fetches objects', async function () {
       await storage.setItem('object', { object: 'object' });
       assume(await storage.getItem('object')).deep.equals({ object: 'object' });
-    });
-
-    it('emits <key> when a new object is get', function (next) {
-      storage.once('object', function (method, value) {
-        assume(method).equals('getItem');
-        assume(value).deep.equals({ object: 'object' });
-
-        next();
-      });
-
-      storage.getItem('object');
-    });
-
-    it('emits <key> when a new value is set', function (next) {
-      storage.once('newObject', function (method, value) {
-        assume(method).equals('setItem');
-        assume(value).deep.equals({ newObject: 'newObject' });
-
-        next();
-      });
-
-      storage.setItem('newObject', { newObject: 'newObject' });
     });
   });
 
@@ -144,14 +86,6 @@ describe('storage-engine', function () {
 
       await storage.clear();
       assume(await storage.getItem('foo')).equals(null);
-    });
-
-    it('emits a `clear` event', function (next) {
-      storage.once('clear', function () {
-        next();
-      });
-
-      storage.clear();
     });
   });
 });
