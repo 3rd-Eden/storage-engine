@@ -57,6 +57,7 @@ async function expire({ before, after, options, engine, enabled, destroy }) {
    * @public
    */
   function get({ value }) {
+    if (!value) return;
     if (value.ttl >= Date.now()) return { value: null };
     return { value: value.value };
   }
