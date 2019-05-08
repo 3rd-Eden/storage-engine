@@ -7,8 +7,10 @@
  */
 function decode(args) {
   if (!args.json) {
-    args.value = JSON.parse(args.value);
-    args.json = true;
+    try {
+      args.value = JSON.parse(args.value);
+      args.json = true;
+    } catch (e) {}
   }
 
   return args;
@@ -23,8 +25,10 @@ function decode(args) {
  */
 function encode(args) {
   if (!args.json) {
-    args.value = JSON.stringify(args.value);
-    args.json = true;
+    try {
+      args.value = JSON.stringify(args.value);
+      args.json = true;
+    } catch (e) {}
   }
 
   return args;
