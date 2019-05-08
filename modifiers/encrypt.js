@@ -20,10 +20,21 @@ const format = {
       ct: props.ciphertext.toString(crypto.enc.Base64)
     };
 
-    if (props.iv) data.iv = props.iv.toString();
+    //
+    // It could be that iv is an empty string, in that case we just
+    // want to completely remove from the object, so set it to undefined.
+    //
+    if (props.iv) data.iv = props.iv.toString() || undefined;
     if (props.salt) data.s = props.salt.toString();
 
-    return JSON.stringify(data);
+    //
+    // The reason that we prefix the payload is prevent a built-in JSON
+    // decoder from decrypting the payload. So for example if you run
+    // the `json` modifier before the `encrypt`, it would already decode
+    // the payload to a object, while we would have needed it as an string
+    // in order to properly decode it.
+    //
+    return '@'+JSON.stringify(data);
   },
 
   /**
@@ -34,7 +45,7 @@ const format = {
    * @public
    */
   parse: function parse(str) {
-    const data = JSON.parse(str);
+    const data = JSON.parse(str.slice(1));
     const params = crypto.lib.CipherParams.create({
       ciphertext: crypto.enc.Base64.parse(data.ct)
     });
@@ -70,23 +81,46 @@ function encrypter({ before, after, options }) {
 
   before({
     setItem: function encrypt({ value }) {
+      if (!value) return;
+
       const encrypted = crypto[encryption].encrypt(value, secret, { format });
+      const data = encrypted.toString();
 
       return {
-        value: encrypted.toString()
+        value: data
       };
     }
+  }, {
+    //
+    // We need to be the last that touches the data to ensure that every
+    // other plugin has time to modify the payload if needed. Reducing our
+    // order to the lowest possible mains that other plugins will have priority
+    // over our modification.
+    //
+    order: 0
   });
 
   after({
     getItem: function decrypt({ value }) {
+      if (!value) return;
+
       const decrypted = crypto[encryption].decrypt(value, secret, { format });
-      const og = decrypted.toString(crypto.enc.Utf8);
+      const data = decrypted.toString(crypto.enc.Utf8);
 
       return {
-        value: og
+        value: data
       };
     }
+  }, {
+    //
+    // We want to be the absolute first when it comes data retrieval, the
+    // data is still encrypted to useless to any other plugin at this point.
+    //
+    // So we need to decrypt it, make it useful, so others can modify if needed.
+    // With 100 being the default, a value of 111 should place us above all
+    // other defaults.
+    //
+    order: 111
   });
 }
 
