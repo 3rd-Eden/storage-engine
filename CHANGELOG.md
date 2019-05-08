@@ -1,5 +1,9 @@
 # CHANGELOG
 
+### 3.0.2
+
+- Added support for ordering to fix plugin/modifier race conditions.
+
 ### 3.0.1
 
 - Ensure that our compatibility check is also ran against the `lib` folder
