@@ -1,6 +1,6 @@
 {
   "name": "storage-modifiers",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Curated set of modifiers for storage-engine",
   "main": "./lib",
   "react-native": "index.js",
