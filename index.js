@@ -36,12 +36,15 @@ function register(map, { pattern, modifiers, context, options }) {
     }, {});
   }
 
+  const { order = 100 } = options;
+
   Object.keys(modifiers).forEach((method) => {
     const previous = map.get(method) || [];
     const modifier = modifiers[method];
 
     map.set(method, previous.concat({
-      pattern: pattern,
+      pattern,
+      order,
 
       /**
        * Wrap our given modifier function so we can transform it in our
@@ -55,7 +58,7 @@ function register(map, { pattern, modifiers, context, options }) {
       modifier: async function wrapper(args) {
         return await modifier.call(context, args, options);
       }
-    }));
+    }).sort((a, b) => b.order - a.order));
   });
 
   return context;

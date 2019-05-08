@@ -120,6 +120,26 @@ describe('StorageEngine', function () {
       assume(value).is.a('string');
       assume(value).equals('this value got intercepted');
     });
+
+    it('can use the `order` option to force order of execution', async function () {
+      const values = [];
+
+      storage.before('*', function () {
+        values.push('first');
+      }, { order: 0 });
+
+      storage.before('*', function () {
+        values.push('middle');
+      });
+
+      storage.before('*', function () {
+        values.push('last');
+      }, { order: 101 });
+
+      await storage.setItem('key', 'value');
+
+      assume(values).deep.equals(['last', 'middle', 'first']);
+    });
   });
 
   describe('#after', function () {
@@ -147,6 +167,26 @@ describe('StorageEngine', function () {
       assume(called).is.true();
       assume(value).is.a('string');
       assume(value).equals('this is different now');
+    });
+
+    it('can use the `order` option to force order of execution', async function () {
+      const values = [];
+
+      storage.after('*', function () {
+        values.push('first');
+      }, { order: 0 });
+
+      storage.after('*', function () {
+        values.push('middle');
+      });
+
+      storage.after('*', function () {
+        values.push('last');
+      }, { order: 101 });
+
+      await storage.setItem('key', 'value');
+
+      assume(values).deep.equals(['last', 'middle', 'first']);
     });
   });
 

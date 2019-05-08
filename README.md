@@ -133,6 +133,12 @@ The `before` method accepts the following arguments:
   would like to pre-process, and the value the `(async)function` that would
   handle the pre-processing. If you supply a `(async)function` instead of an
   object, it would be called for all available methods.
+- **`options`** Additional options:
+  - `order`: Allows you control the order of execution of your function, placing
+    before or after other added methods in the execution chain. The order is
+    set by default to `100` if no option is provided. The higher value, the
+    important it is to execute this function early. So a `9000` will be executed
+    before a order `100` and an order of `0` would be executed last.
 
 ### After
 
