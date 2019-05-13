@@ -1,13 +1,6 @@
 import AsyncStorage from './compatibility';
 import EventEmitter from 'eventemitter3';
-import diagnostics from 'diagnostics';
 import enabled from 'enabled';
-
-//
-// Create a diagnostics instance so we can add some logging.
-//
-const debug = diagnostics('storage-engine');
-const debugStorage = diagnostics('storage-engine:storage');
 
 /**
  * All available API methods on which our modifier could be called.
@@ -146,10 +139,6 @@ class StorageEngine extends EventEmitter {
     // some of the pre/post processing to reduce duplicate code.
     //
     APIMethods.forEach((method) => {
-      if (typeof this[method] !== 'function') {
-        return debug(`StorageEngine is missing an API method for ${method}`);
-      }
-
       this.redefine(method);
     });
   }
@@ -164,7 +153,6 @@ class StorageEngine extends EventEmitter {
    * @public
    */
   async api(method, ...args) {
-    debugStorage(`${method}:`, args);
     return await AsyncStorage[method](...args);
   }
 
@@ -177,7 +165,6 @@ class StorageEngine extends EventEmitter {
    */
   redefine(method) {
     const fn = this[method];
-    debug(`redefining ${method} with our plugin processing`);
 
     this[method] = async function proxy(key, value) {
       const multiple = Array.isArray(key);
