@@ -43,7 +43,6 @@ react-native link @react-native-community/async-storage
   - [multiSet](#multiset)
   - [multiMerge](#multimerge)
   - [multiRemove](#multiremove)
-- [Debugging](#debugging)
 - [License](#license)
 
 ## Usage
@@ -415,21 +414,6 @@ await storage.multiRemove(['one', 'two']);
 
 > The data that is returned by the **multi** API is slightly different, as we've
 > wrapped each item in an object which has `key`, and `value` property.
-
-## Debugging
-
-The `storage-engine` is instrumented with the `diagnostics` library which will
-allow you to opt-in to debug logs. These can be enabled through AsyncStorage
-by setting the `DEBUG` key with a specific logger pattern that needs to be
-enabled.
-
-```js
-import storage from 'storage-engine';
-
-await storage.setItem('DEBUG', 'storage-engine*');
-```
-
-See [diagnostics](https://github.com/3rd-Eden/diagnostics) for more information.
 
 ## License
 

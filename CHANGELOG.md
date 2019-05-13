@@ -1,5 +1,11 @@
 # CHANGELOG
 
+### 3.0.3
+
+- Remove `diagnostics` as we didn't do any useful debugging, and were causing
+  an require cycle for React-Native where storage-engine was depended upon
+  by diagnostics, which we dependend up..
+
 ### 3.0.2
 
 - Added support for ordering to fix plugin/modifier race conditions.
