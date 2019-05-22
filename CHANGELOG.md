@@ -1,5 +1,10 @@
 # CHANGELOG
 
+### 3.0.4
+
+- Remove `peerDependencies` It's a nice concept, but it's output is confusing
+  when we're used as optional dependency in projects. 
+
 ### 3.0.3
 
 - Remove `diagnostics` as we didn't do any useful debugging, and were causing
