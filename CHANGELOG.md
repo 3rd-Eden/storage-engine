@@ -1,5 +1,9 @@
 # CHANGELOG
 
+### 3.0.6
+
+- Revert dependencies bump of 3.0.5
+
 ### 3.0.5
 
 - Bumped dependencies to latest
