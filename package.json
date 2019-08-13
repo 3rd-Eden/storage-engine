@@ -34,7 +34,7 @@
   "homepage": "https://github.com/3rd-Eden/storage-engine#readme",
   "dependencies": {
     "enabled": "^2.0.0",
-    "eventemitter3": "^3.1.0"
+    "eventemitter3": "^4.0.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.1.5",
