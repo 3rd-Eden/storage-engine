@@ -1,5 +1,9 @@
 # CHANGELOG
 
+### 3.0.7
+
+- Only bump eventemitter3 to latest.
+
 ### 3.0.6
 
 - Revert dependencies bump of 3.0.5
